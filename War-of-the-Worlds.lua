@@ -8,9 +8,8 @@ local remote = nil
 local rocket = nil
 local holding = false
 local enabled = false
-local extraShots = 5
+local extraShots = 5 -- <- anpassen wie viele Schüsse du beim Klick willst
 
--- RAPID FIRE FÜR ANDERE SPIELER
 local function startRapidFire()
     RunService:BindToRenderStep(
         'RPGRapidFire',
@@ -24,13 +23,9 @@ local function startRapidFire()
                             local tool = char:FindFirstChildOfClass('Tool')
                             if tool and tool:FindFirstChild('Remote') and tool:FindFirstChild('Folder') then
                                 local remote = tool:FindFirstChild('Remote')
-                                local folder = tool:FindFirstChild('Folder')
-                                local rocket = folder:FindFirstChild('Rocket')
+                                local rocket = tool:FindFirstChild('Folder'):FindFirstChild('Rocket')
                                 if remote and rocket then
-                                    local cam = workspace.CurrentCamera
-                                    local ray = cam:ViewportPointToRay(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
-                                    local direction = ray.Direction.Unit * 1000
-                                    remote:FireServer(rocket.Position + direction, rocket.Position)
+                                    remote:FireServer(mouse.Hit.Position, rocket.Position)
                                 end
                             end
                         end
@@ -71,20 +66,15 @@ task.spawn(function()
     end
 end)
 
--- 👇 Extra-Schüsse beim Klick (wenn Rapid Fire OFF)
 mouse.Button1Down:Connect(function()
     holding = true
     if enabled then
         startRapidFire()
     else
         if remote and rocket then
-            local cam = workspace.CurrentCamera
-            local ray = cam:ViewportPointToRay(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
-            local origin = rocket.Position
-            local direction = ray.Direction.Unit * 1000
-
             for i = 1, extraShots do
-                remote:FireServer(origin + direction, origin)
+                local direction = (mouse.Hit.Position - rocket.Position).Unit * 1000
+                remote:FireServer(rocket.Position + direction, rocket.Position)
             end
         end
     end
@@ -95,9 +85,10 @@ mouse.Button1Up:Connect(function()
     stopRapidFire()
 end)
 
--- 📦 UI mit Knopf und RPG-Liste
+-- Haupt GUI
 local gui = Instance.new('ScreenGui', game.CoreGui)
 gui.Name = 'RPGGui'
+gui.ResetOnSpawn = false
 
 local frame = Instance.new('Frame', gui)
 frame.Size = UDim2.new(0, 250, 0, 130)
@@ -135,15 +126,34 @@ checkbox.MouseButton1Click:Connect(function()
     end
 end)
 
--- 🧑‍🚀 Liste der Spieler mit RPG
-local playerListLabel = Instance.new("TextLabel", frame)
-playerListLabel.Size = UDim2.new(1, -20, 0, 30)
-playerListLabel.Position = UDim2.new(0, 10, 1, -30)
+-- Externes transparentes Fenster für RPG-Spieler
+local listGui = Instance.new("ScreenGui", game.CoreGui)
+listGui.Name = "RPGListGui"
+listGui.ResetOnSpawn = false
+listGui.IgnoreGuiInset = true
+
+local listFrame = Instance.new("Frame", listGui)
+listFrame.Size = UDim2.new(0, 300, 0, 40)
+listFrame.Position = UDim2.new(0.5, -150, 0, 50)
+listFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+listFrame.BackgroundTransparency = 0.5
+listFrame.Active = true
+listFrame.Draggable = true
+
+local playerListLabel = Instance.new("TextLabel", listFrame)
+playerListLabel.Size = UDim2.new(1, -10, 1, 0)
+playerListLabel.Position = UDim2.new(0, 5, 0, 0)
 playerListLabel.BackgroundTransparency = 1
-playerListLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+playerListLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
 playerListLabel.Font = Enum.Font.SourceSans
-playerListLabel.TextSize = 16
+playerListLabel.TextSize = 18
 playerListLabel.Text = "Mit RPG: Wird geladen..."
+
+-- Durchklickbar
+listGui.DisplayOrder = 10
+listGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+listFrame.ZIndex = 0
+playerListLabel.ZIndex = 1
 
 local function hasRPG(plr)
     local char = plr.Character
