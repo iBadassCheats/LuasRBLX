@@ -1,0 +1,168 @@
+--// Services
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local Workspace = game:GetService('Workspace')
+
+local LocalPlayer = Players.LocalPlayer
+
+--// Settings
+local settings = {
+    infEnergy = false,
+    autoConvert = false,
+    killAll = false,
+    gunMods = false,
+    collectMoney = false,
+    autoMerge = false,
+    autoBuy = false,
+    buyAmount = '',
+    autoUpgrade = false,
+}
+
+--// Get Player Tycoon
+local tycoon
+for _, v in Workspace.Tycoon.Tycoons:GetChildren() do
+    if v.Owner.Value == LocalPlayer then
+        tycoon = v
+        break
+    end
+end
+
+--// Load UI Library
+local Library = loadstring(
+    game:HttpGet(
+        'https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wizard'
+    )
+)()
+local Window = Library:NewWindow('Credit: iBadassCheats')
+
+--// Currency Tab
+local CurrencyTab = Window:NewSection('Currency')
+CurrencyTab:CreateToggle('Infinite Energy', function(value)
+    settings.infEnergy = value
+end)
+CurrencyTab:CreateToggle('Auto Convert Energy', function(value)
+    settings.autoConvert = value
+end)
+CurrencyTab:CreateToggle('Auto Collect Money', function(value)
+    settings.collectMoney = value
+end)
+
+--// Weapons Tab
+local WeaponsTab = Window:NewSection('Weapons')
+WeaponsTab:CreateToggle('Kill All Zombies', function(value)
+    settings.killAll = value
+end)
+WeaponsTab:CreateToggle('Gun Modifications', function(value)
+    settings.gunMods = value
+end)
+
+--// Tycoon Tab
+local TycoonTab = Window:NewSection('Tycoon')
+TycoonTab:CreateToggle('Auto Buy Towers', function(value)
+    settings.autoBuy = value
+end)
+TycoonTab:CreateDropdown(
+    'Amount',
+    { '', '3', '10', '30', '50', '100', '1000', '10000' },
+    1,
+    function(amount)
+        settings.buyAmount = amount
+    end
+)
+TycoonTab:CreateToggle('Auto Merge Towers', function(value)
+    settings.autoMerge = value
+end)
+TycoonTab:CreateToggle('Auto Upgrade Convert', function(value)
+    settings.autoUpgrade = value
+end)
+
+--// Main Loop
+RunService.RenderStepped:Connect(function()
+    local character = LocalPlayer.Character
+    local tier = LocalPlayer:GetAttribute('Tier')
+    local tool = character and character:FindFirstChildWhichIsA('Tool')
+    local gun = (
+        tool
+        and tool:FindFirstChild('GunClient')
+        and tool:FindFirstChild('Configuration')
+    )
+            and tool
+        or nil
+
+    -- Infinite Energy
+    if settings.infEnergy then
+        ReplicatedStorage.Signals.RemoteEvents.GetWoolRemote:FireServer(tier)
+    end
+
+    -- Auto Convert
+    if settings.autoConvert then
+        ReplicatedStorage.Signals.RemoteEvents.PutRemote:FireServer()
+    end
+
+    -- Auto Collect Money
+    if settings.collectMoney then
+        for _, money in Workspace:GetChildren() do
+            if money.Name == 'Money' then
+                firetouchinterest(money, character.HumanoidRootPart, 0)
+                firetouchinterest(money, character.HumanoidRootPart, 1)
+            end
+        end
+    end
+
+    -- Gun Modifications
+    if settings.gunMods and gun then
+        local config = gun.Configuration
+        if config:FindFirstChild('Automatic') then
+            config.Automatic.Value = true
+        end
+        if config:FindFirstChild('Firerate') and config.Firerate.Value > 0 then
+            config.Firerate.Value = 0
+        end
+        if
+            config:FindFirstChild('ReloadTime')
+            and config.ReloadTime.Value > 0
+        then
+            config.ReloadTime.Value = 0
+        end
+    end
+
+    -- Kill All Zombies
+    if settings.killAll and gun and tycoon then
+        for _, zombie in tycoon.Round:GetChildren() do
+            if
+                zombie:FindFirstChild('Humanoid')
+                and zombie.Humanoid.Health > 0
+            then
+                gun.Remotes.CastRay:FireServer(
+                    Vector3.new(1, 1, 1),
+                    zombie.Humanoid,
+                    true
+                )
+            end
+        end
+    end
+
+    -- Auto Buy Towers
+    if settings.autoBuy and tycoon then
+        local button = tycoon.Buttons_E['Add' .. settings.buyAmount]
+        if button then
+            firetouchinterest(button.Head, character.HumanoidRootPart, 0)
+            firetouchinterest(button.Head, character.HumanoidRootPart, 1)
+        end
+    end
+
+    -- Auto Merge Towers
+    if settings.autoMerge and tycoon then
+        local mergeButton = tycoon.Buttons_E.Merge
+        firetouchinterest(mergeButton.Head, character.HumanoidRootPart, 0)
+        firetouchinterest(mergeButton.Head, character.HumanoidRootPart, 1)
+    end
+
+    -- Auto Upgrade Convert
+    if settings.autoUpgrade and tycoon then
+        local upgradeButton = tycoon.Buttons_E.Upgrade
+        firetouchinterest(upgradeButton.Head, character.HumanoidRootPart, 0)
+        firetouchinterest(upgradeButton.Head, character.HumanoidRootPart, 1)
+    end
+end)
