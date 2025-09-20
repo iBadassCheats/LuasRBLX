@@ -1,0 +1,214 @@
+-- // ADVANCED AUTO FARM MENU — CLEAN ENGLISH VERSION
+-- // Features: Draggable GUI, Instant Open Case, Optimized Farm Loop
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local dragging, dragStart, startPos
+
+-- Utility: Rounded corners
+local function makeCorner(parent, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 8)
+    c.Parent = parent
+end
+
+-- Utility: Create styled button
+local function makeButton(parent, posY, text, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.92, 0, 0, 45)
+    btn.Position = UDim2.new(0.04, 0, 0, posY)
+    btn.BackgroundColor3 = color
+    btn.BackgroundTransparency = 0.3
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 16
+    btn.Parent = parent
+    makeCorner(btn)
+    return btn
+end
+
+-- Create GUI
+local function createModernGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "AdvancedFarmMenu"
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Parent = game:GetService("CoreGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 320, 0, 260)
+    frame.Position = UDim2.new(0.5, -160, 0.2, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    frame.BackgroundTransparency = 0.1
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    makeCorner(frame, 12)
+
+    -- Shadow
+    local shadow = Instance.new("ImageLabel")
+    shadow.Image = "rbxassetid://3570695787"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.BackgroundTransparency = 1
+    shadow.Size = UDim2.new(1, 40, 1, 40)
+    shadow.Position = UDim2.new(0, -20, 0, -20)
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 230, 230)
+    shadow.SliceScale = 0.04
+    shadow.ZIndex = 0
+    shadow.Parent = frame
+
+    -- Drag bar
+    local dragBar = Instance.new("Frame")
+    dragBar.Size = UDim2.new(1, 0, 0, 30)
+    dragBar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    dragBar.BackgroundTransparency = 0.3
+    dragBar.Parent = frame
+    makeCorner(dragBar, 8)
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -60, 1, 0)
+    title.Position = UDim2.new(0, 30, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "💰 Advanced Farm Menu"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = dragBar
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -32, 0, 3)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 20
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Parent = dragBar
+
+    -- Buttons
+    local farmBtn = makeButton(frame, 45, "▶️ START FARM MONEY", Color3.fromRGB(60, 120, 200))
+    local caseBtn = makeButton(frame, 105, "⚡ INSTANT OPEN CASE", Color3.fromRGB(220, 80, 80))
+    local killBtn = makeButton(frame, 165, "🗑️ CLOSE MENU COMPLETELY", Color3.fromRGB(60, 60, 70))
+
+    -- Status
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(0.92, 0, 0, 20)
+    status.Position = UDim2.new(0.04, 0, 0, 220)
+    status.BackgroundTransparency = 1
+    status.Text = "Status: Waiting..."
+    status.TextColor3 = Color3.fromRGB(200, 200, 200)
+    status.Font = Enum.Font.Gotham
+    status.TextSize = 14
+    status.TextXAlignment = Enum.TextXAlignment.Left
+    status.Parent = frame
+
+    -- Drag logic
+    dragBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging, dragStart, startPos = true, input.Position, frame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    -- Logic
+    local farming, lastTouch = false, 0
+
+    local function toggleFarm()
+    farming = not farming
+    if farming then
+        farmBtn.Text = "⏹ STOP FARM"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+        status.Text = "Status: Preparing..."
+
+        spawn(function()
+            local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+            local hrp = char:WaitForChild("HumanoidRootPart", 5)
+            if not hrp then return end
+
+            status.Text = "Status: Farming active... 💰"
+
+            local conn
+            conn = RunService.Heartbeat:Connect(function()
+                if not farming then conn:Disconnect() return end
+                if tick() - lastTouch < 0.3 then return end
+                lastTouch = tick()
+
+                -- Always search for the part (handles despawn/respawn)
+                local part = workspace:FindFirstChild("Obbies") and 
+                             workspace.Obbies:FindFirstChild("9") and 
+                             workspace.Obbies["9"]:FindFirstChild("Folder") and 
+                             workspace.Obbies["9"].Folder:FindFirstChild("Cash") and 
+                             workspace.Obbies["9"].Folder.Cash:FindFirstChild("Collect")
+
+                if part and part:IsA("BasePart") then
+                    local ti = part:FindFirstChild("TouchInterest")
+
+                    -- Teleport near part if too far away
+                    if (hrp.Position - part.Position).Magnitude > 10 then
+                        hrp.CFrame = part.CFrame * CFrame.new(0, 3, 0)
+                    end
+
+                    if ti then
+                        firetouchinterest(hrp, part, 0)
+                        firetouchinterest(hrp, part, 1)
+                    else
+                        local orig = hrp.CFrame
+                        hrp.CFrame = part.CFrame * CFrame.new(0, 2.5, 0)
+                        task.wait(0.05)
+                        hrp.CFrame = orig
+                    end
+
+                    status.Text = "Status: 💰 Collected!"
+                else
+                    status.Text = "⚠️ Waiting for Collect block..."
+                end
+            end)
+        end)
+    else
+        farmBtn.Text = "▶️ START FARM MONEY"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+        status.Text = "Status: Stopped."
+    end
+end
+
+
+    local function instaCase()
+        local s = localPlayer:FindFirstChild("Settings")
+        if s and s:FindFirstChild("Animation Speed") then
+            s["Animation Speed"].Value = 1000
+            status.Text = "✅ Animation Speed = 1000"
+        else
+            status.Text = "❌ Settings not found!"
+        end
+    end
+
+    -- Connect
+    farmBtn.MouseButton1Click:Connect(toggleFarm)
+    caseBtn.MouseButton1Click:Connect(instaCase)
+    closeBtn.MouseButton1Click:Connect(function() frame.Visible = false end)
+    killBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+    return frame
+end
+
+-- Init
+local ui = createModernGUI()
+print("🚀 Script loaded! Menu opened.")
